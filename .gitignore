@@ -1,3 +1,5 @@
+####### Kotlin github default #######
+
 # Compiled class file
 *.class
 
@@ -25,3 +27,49 @@ replay_pid*
 
 # Kotlin Gradle plugin data, see https://kotlinlang.org/docs/whatsnew20.html#new-directory-for-kotlin-data-in-gradle-projects
 .kotlin/
+
+####### Android default, googled #######
+
+# Gradle
+.gradle/
+build/
+**/build/
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# Misc
+captures/
+.externalNativeBuild/
+
+####### Android Studio GhatGpt recs #######
+
+# Android specific
+*.apk
+# pre-compiled app packages
+*.ap_
+# Android App Bundles
+*.aab  
+# Dalvik Executable files      
+*.dex
+*.class
+# common build dir
+out/         
+
+# IntelliJ / Android Studio
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+.idea/navEditor.xml
+.idea/assetWizardSettings.xml
+
+# Keystore files (if you generate one locally)
+*.jks
+*.keystore
+
+# NDK / CMake (only if you use them later)
+.obj/
+*.so
