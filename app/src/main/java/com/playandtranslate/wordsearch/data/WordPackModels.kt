@@ -8,14 +8,14 @@ data class WordPack(
     val version: Int,
     val sourceLang: String,
     val targetLang: String,
-    val direction: String, // "LTR" or "RTL"
+    val direction: String,
     val title: String,
-    val origin: String,    // "builtin" | "user"
+    val origin: String,
     val words: List<WordEntry>
 )
 
 @Serializable
 data class WordEntry(
-    val source: String, // German
-    val target: String  // English
+    val source: String,
+    val target: String
 )

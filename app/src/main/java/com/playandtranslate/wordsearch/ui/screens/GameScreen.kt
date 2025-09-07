@@ -1,32 +1,47 @@
 package com.playandtranslate.wordsearch.ui.screens
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.playandtranslate.wordsearch.ui.GameUiState
+import com.playandtranslate.wordsearch.ui.GameViewModel
+
 @Composable
 fun GameScreen(
-    vm: GameViewModel = androidx.lifecycle.viewmodel.compose.viewModel()
+    modifier: Modifier = Modifier,
+    vm: GameViewModel = viewModel()
 ) {
-    val state = vm.uiState.value
-    when {
-        state.isLoading -> Text("Loading…")
-        state.error != null -> Text("Error: ${state.error}")
-        else -> {
-            androidx.compose.foundation.layout.Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(16.dp)
-            ) {
-                androidx.compose.material3.Text(
+    val state: GameUiState = vm.uiState.value
+
+    Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
+        when {
+            state.isLoading -> Text("Loading…")
+            state.error != null -> Text("Error: ${state.error}")
+            else -> {
+                Text(
                     text = state.packTitle,
-                    style = androidx.compose.material3.MaterialTheme.typography.headlineSmall
+                    style = MaterialTheme.typography.headlineSmall
                 )
-                androidx.compose.foundation.layout.Spacer(Modifier.padding(8.dp))
+                Spacer(Modifier.padding(8.dp))
+
                 // Word list: tap to reveal translation
                 state.words.forEach { (de, en) ->
-                    var show by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(false) }
-                    androidx.compose.material3.Text(
-                        text = if (show) "$de — $en" else de,
+                    val show = remember(de) { mutableStateOf(false) }
+                    Text(
+                        text = if (show.value) "$de — $en" else de,
                         modifier = Modifier
                             .padding(vertical = 4.dp)
-                            .clickable { show = !show }
+                            .clickable { show.value = !show.value }
                     )
                 }
             }

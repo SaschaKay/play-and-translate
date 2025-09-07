@@ -2,7 +2,10 @@ package com.playandtranslate.wordsearch.ui
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.playandtranslate.wordsearch.data.PackRepository
+import com.playandtranslate.wordsearch.di.ServiceLocator
 import kotlinx.coroutines.launch
+import androidx.compose.runtime.mutableStateOf
 
 data class GameUiState(
     val isLoading: Boolean = true,
@@ -15,8 +18,7 @@ class GameViewModel(
     private val repo: PackRepository = ServiceLocator.packRepository
 ) : ViewModel() {
 
-    var uiState = androidx.compose.runtime.mutableStateOf(GameUiState())
-        private set
+    val uiState = mutableStateOf(GameUiState())
 
     init {
         loadDefaultPack()
