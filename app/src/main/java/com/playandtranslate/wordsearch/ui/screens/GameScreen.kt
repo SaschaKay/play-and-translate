@@ -1,27 +1,31 @@
 package com.playandtranslate.wordsearch.ui.screens
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.playandtranslate.wordsearch.ui.GameUiState
+
 import com.playandtranslate.wordsearch.ui.GameViewModel
+import com.playandtranslate.wordsearch.domain.Cell
+import com.playandtranslate.wordsearch.domain.Grid
+
+private val CellSize: Dp = 40.dp
+private const val LetterScale = 0.55f
+private val CellRadius = 1.dp
 
 @Composable
 fun GameScreen(
     modifier: Modifier = Modifier,
     vm: GameViewModel = viewModel()
 ) {
-    val state: GameUiState = vm.uiState.value
+    val state = vm.uiState.value
 
     Column(modifier = modifier.fillMaxSize().padding(16.dp)) {
         when {
@@ -32,19 +36,52 @@ fun GameScreen(
                     text = state.packTitle,
                     style = MaterialTheme.typography.headlineSmall
                 )
-                Spacer(Modifier.padding(8.dp))
 
-                // Word list: tap to reveal translation
-                state.words.forEach { (de, en) ->
-                    val show = remember(de) { mutableStateOf(false) }
-                    Text(
-                        text = if (show.value) "$de — $en" else de,
-                        modifier = Modifier
-                            .padding(vertical = 4.dp)
-                            .clickable { show.value = !show.value }
-                    )
+                Spacer(Modifier.height(12.dp))
+                WordGrid(state.grid)
+            }
+        }
+    }
+}
+
+@Composable
+fun WordGrid(
+    grid: Grid,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        grid.forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                row.forEach { cell ->
+                    GridCell(cell = cell)
                 }
             }
         }
+    }
+}
+
+@Composable
+fun GridCell(
+    modifier: Modifier = Modifier,
+    cell: Cell
+) {
+    Box(
+        modifier = modifier.size(CellSize),
+        contentAlignment = Alignment.Center
+    ) {
+        Text(
+            text = cell.letter.uppercaseChar().toString(),
+            // keep proportions when you change CellSize
+            fontSize = (CellSize.value * LetterScale).sp,
+            // cleaner vertical centering
+            style = MaterialTheme.typography.titleMedium.copy(
+                platformStyle = PlatformTextStyle(includeFontPadding = false),
+                fontFamily = FontFamily.Monospace
+            ),
+            textAlign = TextAlign.Center
+        )
     }
 }
