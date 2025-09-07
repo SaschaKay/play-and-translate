@@ -1,0 +1,17 @@
+{
+  "packId": "basics",
+  "version": 1,
+  "sourceLang": "de",
+  "targetLang": "en",
+  "direction": "LTR",
+  "title": "Basics",
+  "origin": "builtin",
+  "words": [
+    { "source": "Hund",   "target": "dog" },
+    { "source": "Katze",  "target": "cat" },
+    { "source": "Haus",   "target": "house" },
+    { "source": "Baum",   "target": "tree" },
+    { "source": "Wasser", "target": "water" },
+    { "source": "Brot",   "target": "bread" }
+  ]
+}
