@@ -39,6 +39,13 @@ fun GameScreen(
 
                 Spacer(Modifier.height(12.dp))
                 WordGrid(state.grid)
+
+                Spacer(Modifier.height(16.dp))
+                DebugWordList(
+                    placements = state.placements,
+                    skipped = state.skipped
+                )
+
             }
         }
     }
@@ -83,5 +90,40 @@ fun GridCell(
             ),
             textAlign = TextAlign.Center
         )
+    }
+}
+
+
+@Composable
+private fun DebugWordList(
+    placements: List<com.playandtranslate.wordsearch.domain.WordPlacement>,
+    skipped: List<String>,
+    modifier: Modifier = Modifier
+) {
+    Column(modifier = modifier) {
+        Text(
+            text = "Placed words (${placements.size}):",
+            style = MaterialTheme.typography.titleSmall
+        )
+        Spacer(Modifier.height(6.dp))
+        placements.forEach { p ->
+            val first = p.cells.firstOrNull()
+            val last = p.cells.lastOrNull()
+            Text(
+                text = "• ${p.original} → ${p.normalized}  " +
+                        "(len=${p.cells.size})  " +
+                        "from (${first?.row},${first?.col}) to (${last?.row},${last?.col})",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+
+        if (skipped.isNotEmpty()) {
+            Spacer(Modifier.height(10.dp))
+            Text(
+                text = "Skipped (${skipped.size}): ${skipped.joinToString()}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     }
 }
