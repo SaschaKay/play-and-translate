@@ -7,16 +7,16 @@ junit = "4.13.2"
 junitVersion = "1.1.5"
 espressoCore = "3.5.1"
 
-# Updated lifecycle to keep all artifacts in sync
+# Keep lifecycle in sync across artifacts
 lifecycle = "2.8.4"
 
 activityCompose = "1.8.0"
 composeBom = "2024.09.00"
 
-# New: coroutines + testing + serialization
+# Coroutines + testing + serialization
 coroutines = "1.9.0"
 archCoreTesting = "2.2.0"
-serializationJson = "1.6.3"
+serializationJson = "1.7.1"  # <- bumped from 1.6.3 to remove ExperimentalSerializationApi warning
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }

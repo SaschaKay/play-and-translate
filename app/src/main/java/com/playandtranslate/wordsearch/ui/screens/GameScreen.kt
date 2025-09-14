@@ -34,13 +34,14 @@ private val CellGap = 6.dp
 @Composable
 fun GameScreen(
     modifier: Modifier = Modifier,
-    vm: GameViewModel = viewModel() // keep DI simple for MVP
+    vm: GameViewModel = viewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
 
     Column(
         modifier = modifier
             .fillMaxSize()
+            .statusBarsPadding()          // <-- content avoids the notch
             .padding(16.dp)
     ) {
         when {

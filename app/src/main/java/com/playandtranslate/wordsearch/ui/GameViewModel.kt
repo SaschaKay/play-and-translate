@@ -6,8 +6,8 @@ import com.playandtranslate.wordsearch.di.ServiceLocator
 import com.playandtranslate.wordsearch.domain.Cell
 import com.playandtranslate.wordsearch.domain.Grid
 import com.playandtranslate.wordsearch.domain.Pos
-import com.playandtranslate.wordsearch.data.PackRepository          // <- FIXED: data.* (not repo.*)
-import com.playandtranslate.wordsearch.words.GenerateGrid          // <- words.*
+import com.playandtranslate.wordsearch.data.PackRepository
+import com.playandtranslate.wordsearch.words.GenerateGrid
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,7 +18,7 @@ import kotlinx.coroutines.withContext
 /**
  * Minimal VM for the word-search MVP.
  *
- * - Heavy work (grid generation) runs on Dispatchers.Default.
+ * - Repo does IO internally; generator runs on Dispatchers.Default.
  * - UI reads a single immutable GameUiState.
  */
 class GameViewModel(
@@ -49,36 +49,36 @@ class GameViewModel(
         setLoading()
         viewModelScope.launch {
             try {
-                // IO/CPU off main
-                val result = withContext(Dispatchers.Default) {
-                    val packId = repo.listBuiltinPacks().first()
-                    val pack = repo.loadPack(packId)
+                // Packs from assets (repo switches to IO internally)
+                val packId = repo.listBuiltinPacks().firstOrNull()
+                if (packId == null) {
+                    setError("No built-in packs found in assets/packs.")
+                    return@launch
+                }
+                val pack = repo.loadPack(packId)
 
-                    val build = gridGen.createGrid(
+                // Grid generation is CPU-ish → Default
+                val build = withContext(Dispatchers.Default) {
+                    gridGen.createGrid(
                         words = pack.words.map { it.source },
                         size = 8,
-                        diagonals = true,           // MVP: allow, later make smarter
-                        allowIntersections = true   // MVP: allow
+                        diagonals = true,            // MVP: allow; later turn off when smarter
+                        allowIntersections = true    // MVP: allow
                     )
-
-                    val cellsGrid: Grid = build.grid.mapIndexed { r, row ->
-                        row.mapIndexed { c, ch -> Cell(r, c, ch) }
-                    }
-
-                    Triple(pack.title, cellsGrid, build.placements to build.skipped)
                 }
 
-                val (title, grid, pair) = result
-                val (placements, skipped) = pair
+                val cellsGrid: Grid = build.grid.mapIndexed { r, row ->
+                    row.mapIndexed { c, ch -> Cell(r, c, ch) }
+                }
 
                 update {
                     it.copy(
                         isLoading = false,
                         error = null,
-                        packTitle = title,
-                        grid = grid,
-                        placements = placements,
-                        skipped = skipped
+                        packTitle = pack.title,
+                        grid = cellsGrid,
+                        placements = build.placements,
+                        skipped = build.skipped
                     )
                 }
             } catch (t: Throwable) {
