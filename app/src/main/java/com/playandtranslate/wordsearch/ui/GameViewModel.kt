@@ -1,115 +1,101 @@
 package com.playandtranslate.wordsearch.ui
 
-import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.playandtranslate.wordsearch.data.PackRepository
 import com.playandtranslate.wordsearch.di.ServiceLocator
-import com.playandtranslate.wordsearch.domain.*
+import com.playandtranslate.wordsearch.domain.Cell
+import com.playandtranslate.wordsearch.domain.Grid
+import com.playandtranslate.wordsearch.domain.Pos
+import com.playandtranslate.wordsearch.data.PackRepository          // <- FIXED: data.* (not repo.*)
+import com.playandtranslate.wordsearch.words.GenerateGrid          // <- words.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
-// --- GameUiState: add selection + found words ---
-data class GameUiState(
-    val isLoading: Boolean = true,
-    val packTitle: String = "",
-    val grid: Grid = emptyList(),
-    val placements: List<WordPlacement> = emptyList(),
-    val skipped: List<String> = emptyList(),
-    val selectedStart: Pos? = null,                 // first tap
-    val foundWordIndexes: Set<Int> = emptySet(),    // which placements are found
-    val error: String? = null
-)
-
-fun onCellTap(row: Int, col: Int) {
-    val start = uiState.value.selectedStart
-    if (start == null) {
-        // first tap
-        uiState.value = uiState.value.copy(selectedStart = Pos(row, col))
-        return
-    }
-    // second tap: try to complete a straight-line selection
-    val path = straightLine(start, Pos(row, col)) ?: run {
-        // not straight → cancel selection
-        uiState.value = uiState.value.copy(selectedStart = null)
-        return
-    }
-
-    // does this path match any placement (forward or reverse)?
-    val matchedIndex = uiState.value.placements.indexOfFirst { p ->
-        pathsEqual(path, p.cells) || pathsEqual(path, p.cells.asReversed())
-    }
-
-    if (matchedIndex >= 0) {
-        markWordFound(matchedIndex)
-    }
-
-    // clear selection either way
-    uiState.value = uiState.value.copy(selectedStart = null)
-}
-
-private fun pathsEqual(a: List<Pos>, b: List<Pos>): Boolean {
-    if (a.size != b.size) return false
-    for (i in a.indices) if (a[i] != b[i]) return false
-    return true
-}
-
-private fun markWordFound(index: Int) {
-    val state = uiState.value
-    if (index in state.foundWordIndexes) return // already found
-
-    val newFound = state.foundWordIndexes + index
-    // highlight cells of found word(s)
-    val highlight = state.placements[index].cells.toHashSet()
-
-    val newGrid: Grid = state.grid.map { row ->
-        row.map { cell ->
-            if (cell.posIn(highlight)) cell.copy(isFound = true) else cell
-        }
-    }
-
-    uiState.value = state.copy(
-        grid = newGrid,
-        foundWordIndexes = newFound
-    )
-}
-
-// tiny helper to check membership by coordinates
-private fun Cell.posIn(set: Set<Pos>): Boolean = Pos(row, col) in set
-
+/**
+ * Minimal VM for the word-search MVP.
+ *
+ * - Heavy work (grid generation) runs on Dispatchers.Default.
+ * - UI reads a single immutable GameUiState.
+ */
 class GameViewModel(
     private val repo: PackRepository = ServiceLocator.packRepository,
     private val gridGen: GenerateGrid = ServiceLocator.generateGrid
 ) : ViewModel() {
 
-    val uiState = mutableStateOf(GameUiState())
+    private val _uiState = MutableStateFlow(GameUiState())
+    val uiState: StateFlow<GameUiState> = _uiState.asStateFlow()
 
-    init { loadDefaultPack() }
+    init {
+        loadDefaultPack()
+    }
 
-    private fun loadDefaultPack() = viewModelScope.launch {
-        try {
-            val packId = repo.listBuiltinPacks().first()
-            val pack = repo.loadPack(packId)
+    private fun setLoading() {
+        _uiState.value = GameUiState(isLoading = true)
+    }
 
-            val build = gridGen.createGrid(
-                words = pack.words.map { it.source },
-                size = 8,
-                diagonals = true,
-                allowIntersections = true
-            )
+    private fun setError(message: String?) {
+        _uiState.value = GameUiState(isLoading = false, error = message ?: "Unknown error")
+    }
 
-            val cellsGrid: Grid = build.grid.mapIndexed { r, row ->
-                row.mapIndexed { c, ch -> Cell(r, c, ch) }
+    private fun update(transform: (GameUiState) -> GameUiState) {
+        _uiState.value = transform(_uiState.value)
+    }
+
+    private fun loadDefaultPack() {
+        setLoading()
+        viewModelScope.launch {
+            try {
+                // IO/CPU off main
+                val result = withContext(Dispatchers.Default) {
+                    val packId = repo.listBuiltinPacks().first()
+                    val pack = repo.loadPack(packId)
+
+                    val build = gridGen.createGrid(
+                        words = pack.words.map { it.source },
+                        size = 8,
+                        diagonals = true,           // MVP: allow, later make smarter
+                        allowIntersections = true   // MVP: allow
+                    )
+
+                    val cellsGrid: Grid = build.grid.mapIndexed { r, row ->
+                        row.mapIndexed { c, ch -> Cell(r, c, ch) }
+                    }
+
+                    Triple(pack.title, cellsGrid, build.placements to build.skipped)
+                }
+
+                val (title, grid, pair) = result
+                val (placements, skipped) = pair
+
+                update {
+                    it.copy(
+                        isLoading = false,
+                        error = null,
+                        packTitle = title,
+                        grid = grid,
+                        placements = placements,
+                        skipped = skipped
+                    )
+                }
+            } catch (t: Throwable) {
+                setError(t.message)
             }
+        }
+    }
 
-            uiState.value = GameUiState(
-                isLoading = false,
-                packTitle = pack.title,
-                grid = cellsGrid,
-                placements = build.placements,
-                skipped = build.skipped
-            )
-        } catch (t: Throwable) {
-            uiState.value = GameUiState(isLoading = false, error = t.message)
+    /** Two-tap MVP selection (start → end → clear). */
+    fun onCellTap(row: Int, col: Int) {
+        val pos = Pos(row, col)
+        val start = _uiState.value.selectedStart
+        if (start == null) {
+            update { it.copy(selectedStart = pos) }
+        } else {
+            // Later: validate straight line, check match, mark found.
+            update { it.copy(selectedStart = null) }
         }
     }
 }

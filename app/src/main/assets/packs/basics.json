@@ -4,14 +4,11 @@
   "sourceLang": "de",
   "targetLang": "en",
   "direction": "LTR",
-  "title": "Basics",
+  "title": "Basics (DE → EN)",
   "origin": "builtin",
   "words": [
-    { "source": "Hund",   "target": "dog" },
-    { "source": "Katze",  "target": "cat" },
-    { "source": "Haus",   "target": "house" },
-    { "source": "Baum",   "target": "tree" },
-    { "source": "Wasser", "target": "water" },
-    { "source": "Brot",   "target": "bread" }
+    {"source": "Wasser", "target": "water"},
+    {"source": "Apfel", "target": "apple"},
+    {"source": "Brot", "target": "bread"}
   ]
 }
