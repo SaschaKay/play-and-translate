@@ -8,6 +8,8 @@ import com.playandtranslate.wordsearch.domain.Grid
 import com.playandtranslate.wordsearch.domain.Pos
 import com.playandtranslate.wordsearch.data.PackRepository
 import com.playandtranslate.wordsearch.words.GenerateGrid
+import com.playandtranslate.wordsearch.words.straightLine
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -18,12 +20,13 @@ import kotlinx.coroutines.withContext
 /**
  * Minimal VM for the word-search MVP.
  *
- * - Repo does IO internally; generator runs on Dispatchers.Default.
+ * - Repo does IO internally; generator runs on [computationDispatcher].
  * - UI reads a single immutable GameUiState.
  */
 class GameViewModel(
     private val repo: PackRepository = ServiceLocator.packRepository,
-    private val gridGen: GenerateGrid = ServiceLocator.generateGrid
+    private val gridGen: GenerateGrid = ServiceLocator.generateGrid,
+    private val computationDispatcher: CoroutineDispatcher = Dispatchers.Default
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(GameUiState())
@@ -49,7 +52,6 @@ class GameViewModel(
         setLoading()
         viewModelScope.launch {
             try {
-                // Packs from assets (repo switches to IO internally)
                 val packId = repo.listBuiltinPacks().firstOrNull()
                 if (packId == null) {
                     setError("No built-in packs found in assets/packs.")
@@ -57,13 +59,13 @@ class GameViewModel(
                 }
                 val pack = repo.loadPack(packId)
 
-                // Grid generation is CPU-ish → Default
-                val build = withContext(Dispatchers.Default) {
+                // Grid generation is CPU-ish → injected dispatcher (Default in app, Test in unit tests)
+                val build = withContext(computationDispatcher) {
                     gridGen.createGrid(
                         words = pack.words.map { it.source },
                         size = 8,
-                        diagonals = true,            // MVP: allow; later turn off when smarter
-                        allowIntersections = true    // MVP: allow
+                        diagonals = true,
+                        allowIntersections = true
                     )
                 }
 
@@ -78,7 +80,9 @@ class GameViewModel(
                         packTitle = pack.title,
                         grid = cellsGrid,
                         placements = build.placements,
-                        skipped = build.skipped
+                        skipped = build.skipped,
+                        found = emptySet(),
+                        selectedStart = null
                     )
                 }
             } catch (t: Throwable) {
@@ -87,14 +91,42 @@ class GameViewModel(
         }
     }
 
-    /** Two-tap MVP selection (start → end → clear). */
+    /** Two-tap selection: start → end. If path matches any placement (forward/reverse), mark found. */
     fun onCellTap(row: Int, col: Int) {
-        val pos = Pos(row, col)
-        val start = _uiState.value.selectedStart
+        val end = Pos(row, col)
+        val s = _uiState.value
+        val start = s.selectedStart
+
         if (start == null) {
-            update { it.copy(selectedStart = pos) }
+            update { it.copy(selectedStart = end) }
+            return
+        }
+
+        val path = com.playandtranslate.wordsearch.words.straightLine(start, end)
+        if (path.isEmpty()) {
+            update { it.copy(selectedStart = null) }
+            return
+        }
+
+        val idx = s.placements.indexOfFirst { wp ->
+            wp.cells == path || wp.cells.asReversed() == path
+        }
+
+        if (idx >= 0 && idx !in s.found) {
+            val pathSet = path.toHashSet()
+            val newGrid: Grid = s.grid.map { rowList ->
+                rowList.map { cell ->
+                    if (Pos(cell.row, cell.col) in pathSet) cell.copy(isFound = true) else cell
+                }
+            }
+            update {
+                it.copy(
+                    grid = newGrid,
+                    found = it.found + idx,
+                    selectedStart = null
+                )
+            }
         } else {
-            // Later: validate straight line, check match, mark found.
             update { it.copy(selectedStart = null) }
         }
     }
