@@ -38,7 +38,11 @@ fun GameScreen(
                 )
 
                 Spacer(Modifier.height(12.dp))
-                WordGrid(state.grid)
+                WordGrid(
+                    grid = state.grid,
+                    selectedStart = state.selectedStart,
+                    onCellTap = { r, c -> vm.onCellTap(r, c) }
+                )
 
                 Spacer(Modifier.height(16.dp))
                 DebugWordList(
@@ -54,7 +58,9 @@ fun GameScreen(
 @Composable
 fun WordGrid(
     grid: Grid,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onCellTap: (row: Int, col: Int) -> Unit = { _, _ -> },
+    selectedStart: Pos? = null
 ) {
     Column(
         modifier = modifier,
@@ -63,7 +69,18 @@ fun WordGrid(
         grid.forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                 row.forEach { cell ->
-                    GridCell(cell = cell)
+                    val isStart = selectedStart?.let { it.row == cell.row && it.col == cell.col } == true
+                    GridCell(
+                        cell = cell,
+                        modifier = Modifier
+                            .clickable { onCellTap(cell.row, cell.col) }
+                            .then(
+                                if (isStart) Modifier.background(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                    RoundedCornerShape(CellRadius)
+                                ) else Modifier
+                            )
+                    )
                 }
             }
         }
@@ -79,17 +96,20 @@ fun GridCell(
         modifier = modifier.size(CellSize),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = cell.letter.uppercaseChar().toString(),
-            // keep proportions when you change CellSize
-            fontSize = (CellSize.value * LetterScale).sp,
-            // cleaner vertical centering
-            style = MaterialTheme.typography.titleMedium.copy(
-                platformStyle = PlatformTextStyle(includeFontPadding = false),
-                fontFamily = FontFamily.Monospace
-            ),
-            textAlign = TextAlign.Center
-        )
+        val style = if (cell.isFound) {
+            MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+        } else {
+            MaterialTheme.typography.titleMedium
+        }
+            Text(
+                text = cell.letter.uppercaseChar().toString(),
+                fontSize = (CellSize.value * 0.55f).sp,
+                style = style.copy(
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                    fontFamily = FontFamily.Monospace
+                ),
+                textAlign = TextAlign.Center
+            )
     }
 }
 
