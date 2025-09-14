@@ -6,6 +6,8 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +43,7 @@ fun GameScreen(
     vm: GameViewModel = viewModel()
 ) {
     val state by vm.uiState.collectAsStateWithLifecycle()
+    val allFound = state.found.size == state.placements.size && state.placements.isNotEmpty()
 
     Column(
         modifier = modifier
@@ -52,7 +55,28 @@ fun GameScreen(
             state.isLoading -> Text("Loading…")
             state.error != null -> Text("Error: ${state.error}")
             else -> {
-                Text(text = state.packTitle, style = MaterialTheme.typography.headlineSmall)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = state.packTitle,
+                        style = MaterialTheme.typography.headlineSmall,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Button(
+                        onClick = { vm.giveHint() },
+                        enabled = !allFound,
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                        )
+                    ) {
+                        Text("Hint")
+                    }
+                }
+
                 Spacer(Modifier.height(12.dp))
 
                 WordGrid(
@@ -91,7 +115,6 @@ private fun WordGrid(
                         cell = cell,
                         modifier = Modifier
                             .clickable { onCellTap(cell.row, cell.col) }
-                            // Selection is a BORDER (not a fill) so it never clashes with "found" background.
                             .then(
                                 if (isStart) {
                                     Modifier.border(
@@ -101,9 +124,7 @@ private fun WordGrid(
                                         ),
                                         RoundedCornerShape(CellRadius)
                                     )
-                                } else {
-                                    Modifier
-                                }
+                                } else Modifier
                             )
                     )
                 }
@@ -117,26 +138,33 @@ private fun GridCell(
     modifier: Modifier = Modifier,
     cell: Cell
 ) {
-    // Distinct visuals for "found"
     val foundBg = MaterialTheme.colorScheme.primaryContainer
     val foundFg = MaterialTheme.colorScheme.onPrimaryContainer
+    val hintBg = MaterialTheme.colorScheme.secondaryContainer
+    val hintFg = MaterialTheme.colorScheme.onSecondaryContainer
 
     Box(
         modifier = modifier
             .size(CellSize)
             .then(
-                if (cell.isFound) {
-                    Modifier.background(foundBg, RoundedCornerShape(CellRadius))
-                } else {
-                    Modifier
+                when {
+                    cell.isFound -> Modifier.background(foundBg, RoundedCornerShape(CellRadius))
+                    cell.isHint -> Modifier.background(hintBg, RoundedCornerShape(CellRadius))
+                    else -> Modifier
                 }
             ),
         contentAlignment = Alignment.Center
     ) {
         val base = MaterialTheme.typography.titleMedium
-        val style = if (cell.isFound) {
-            base.copy(fontWeight = FontWeight.Bold) // stronger than SemiBold for clarity
-        } else base
+        val style = when {
+            cell.isFound -> base.copy(fontWeight = FontWeight.Bold)
+            else -> base
+        }
+        val color = when {
+            cell.isFound -> foundFg
+            cell.isHint -> hintFg
+            else -> MaterialTheme.colorScheme.onSurface
+        }
 
         Text(
             text = cell.letter.uppercaseChar().toString(),
@@ -144,8 +172,7 @@ private fun GridCell(
             style = style.copy(
                 platformStyle = PlatformTextStyle(includeFontPadding = false),
                 fontFamily = FontFamily.Monospace,
-                // Ensure color contrast with background
-                color = if (cell.isFound) foundFg else MaterialTheme.colorScheme.onSurface
+                color = color
             ),
             textAlign = TextAlign.Center
         )
@@ -175,7 +202,6 @@ private fun DebugWordList(
             } else base
 
             Text(
-                // ✓ for found; • for not yet found
                 text = "${if (isFound) "✓" else "•"} ${p.original} → ${p.normalized}  " +
                         "(len=${p.cells.size})  " +
                         "from (${first?.row},${first?.col}) to (${last?.row},${last?.col})",

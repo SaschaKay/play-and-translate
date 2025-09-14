@@ -20,6 +20,9 @@ data class GameUiState(
     /** Indices of placements successfully found by the player. */
     val found: Set<Int> = emptySet(),
 
-    // Interaction state
+    /** Interaction state */
     val selectedStart: Pos? = null,
+
+    /** Simple telemetry / UX: how many hints were used. */
+    val hintsUsed: Int = 0
 )

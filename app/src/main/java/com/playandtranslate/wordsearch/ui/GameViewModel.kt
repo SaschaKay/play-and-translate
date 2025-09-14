@@ -59,7 +59,6 @@ class GameViewModel(
                 }
                 val pack = repo.loadPack(packId)
 
-                // Grid generation is CPU-ish → injected dispatcher (Default in app, Test in unit tests)
                 val build = withContext(computationDispatcher) {
                     gridGen.createGrid(
                         words = pack.words.map { it.source },
@@ -82,7 +81,8 @@ class GameViewModel(
                         placements = build.placements,
                         skipped = build.skipped,
                         found = emptySet(),
-                        selectedStart = null
+                        selectedStart = null,
+                        hintsUsed = 0
                     )
                 }
             } catch (t: Throwable) {
@@ -102,7 +102,7 @@ class GameViewModel(
             return
         }
 
-        val path = com.playandtranslate.wordsearch.words.straightLine(start, end)
+        val path = straightLine(start, end)
         if (path.isEmpty()) {
             update { it.copy(selectedStart = null) }
             return
@@ -116,7 +116,9 @@ class GameViewModel(
             val pathSet = path.toHashSet()
             val newGrid: Grid = s.grid.map { rowList ->
                 rowList.map { cell ->
-                    if (Pos(cell.row, cell.col) in pathSet) cell.copy(isFound = true) else cell
+                    // found has precedence over hint
+                    if (Pos(cell.row, cell.col) in pathSet) cell.copy(isFound = true, isHint = false)
+                    else cell
                 }
             }
             update {
@@ -128,6 +130,35 @@ class GameViewModel(
             }
         } else {
             update { it.copy(selectedStart = null) }
+        }
+    }
+
+    /** Reveal one letter cell from the next unfound word. */
+    fun giveHint() {
+        val s = _uiState.value
+        // no-op if loading/error or done
+        if (s.isLoading || s.error != null) return
+        val nextIdx = s.placements.indices.firstOrNull { it !in s.found } ?: return
+        val wp = s.placements[nextIdx]
+
+        // pick first cell of the word that isn't found and isn't already hinted
+        val targetPos = wp.cells.firstOrNull { p ->
+            val c = s.grid[p.row][p.col]
+            !c.isFound && !c.isHint
+        } ?: return // nothing to hint (all found/hinted)
+
+        val newGrid: Grid = s.grid.map { row ->
+            row.map { cell ->
+                if (cell.row == targetPos.row && cell.col == targetPos.col && !cell.isFound) {
+                    cell.copy(isHint = true)
+                } else cell
+            }
+        }
+        update {
+            it.copy(
+                grid = newGrid,
+                hintsUsed = it.hintsUsed + 1
+            )
         }
     }
 }
