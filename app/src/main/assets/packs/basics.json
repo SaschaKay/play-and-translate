@@ -1,0 +1,14 @@
+{
+  "packId": "basics",
+  "version": 1,
+  "sourceLang": "de",
+  "targetLang": "en",
+  "direction": "LTR",
+  "title": "Basics (DE → EN)",
+  "origin": "builtin",
+  "words": [
+    {"source": "Wasser", "target": "water"},
+    {"source": "Apfel", "target": "apple"},
+    {"source": "Brot", "target": "bread"}
+  ]
+}
