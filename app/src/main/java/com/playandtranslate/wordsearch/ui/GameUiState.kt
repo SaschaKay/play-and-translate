@@ -17,6 +17,9 @@ data class GameUiState(
     val placements: List<WordPlacement> = emptyList(),
     val skipped: List<String> = emptyList(),
 
+    /** Indices of placements successfully found by the player. */
+    val found: Set<Int> = emptySet(),
+
     // Interaction state
     val selectedStart: Pos? = null,
 )

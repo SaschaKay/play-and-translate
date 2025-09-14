@@ -1,6 +1,8 @@
 package com.playandtranslate.wordsearch.ui.screens
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -14,6 +16,7 @@ import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -25,11 +28,12 @@ import com.playandtranslate.wordsearch.domain.Pos
 import com.playandtranslate.wordsearch.domain.WordPlacement
 import com.playandtranslate.wordsearch.ui.GameViewModel
 
-// Magic numbers -> constants
+// Sizing constants (easy to tweak later)
 private val CellSize: Dp = 40.dp
 private const val LetterScale = 0.55f
 private val CellRadius = 6.dp
 private val CellGap = 6.dp
+private val SelectionBorder = 2.dp
 
 @Composable
 fun GameScreen(
@@ -41,7 +45,7 @@ fun GameScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .statusBarsPadding()          // <-- content avoids the notch
+            .statusBarsPadding()
             .padding(16.dp)
     ) {
         when {
@@ -60,6 +64,7 @@ fun GameScreen(
                 Spacer(Modifier.height(16.dp))
                 DebugWordList(
                     placements = state.placements,
+                    found = state.found,
                     skipped = state.skipped
                 )
             }
@@ -86,10 +91,14 @@ private fun WordGrid(
                         cell = cell,
                         modifier = Modifier
                             .clickable { onCellTap(cell.row, cell.col) }
+                            // Selection is a BORDER (not a fill) so it never clashes with "found" background.
                             .then(
                                 if (isStart) {
-                                    Modifier.background(
-                                        MaterialTheme.colorScheme.primary.copy(alpha = 0.10f),
+                                    Modifier.border(
+                                        BorderStroke(
+                                            SelectionBorder,
+                                            MaterialTheme.colorScheme.secondary
+                                        ),
                                         RoundedCornerShape(CellRadius)
                                     )
                                 } else {
@@ -108,19 +117,35 @@ private fun GridCell(
     modifier: Modifier = Modifier,
     cell: Cell
 ) {
+    // Distinct visuals for "found"
+    val foundBg = MaterialTheme.colorScheme.primaryContainer
+    val foundFg = MaterialTheme.colorScheme.onPrimaryContainer
+
     Box(
-        modifier = modifier.size(CellSize),
+        modifier = modifier
+            .size(CellSize)
+            .then(
+                if (cell.isFound) {
+                    Modifier.background(foundBg, RoundedCornerShape(CellRadius))
+                } else {
+                    Modifier
+                }
+            ),
         contentAlignment = Alignment.Center
     ) {
         val base = MaterialTheme.typography.titleMedium
-        val style = if (cell.isFound) base.copy(fontWeight = FontWeight.SemiBold) else base
+        val style = if (cell.isFound) {
+            base.copy(fontWeight = FontWeight.Bold) // stronger than SemiBold for clarity
+        } else base
 
         Text(
             text = cell.letter.uppercaseChar().toString(),
             fontSize = (CellSize.value * LetterScale).sp,
             style = style.copy(
                 platformStyle = PlatformTextStyle(includeFontPadding = false),
-                fontFamily = FontFamily.Monospace
+                fontFamily = FontFamily.Monospace,
+                // Ensure color contrast with background
+                color = if (cell.isFound) foundFg else MaterialTheme.colorScheme.onSurface
             ),
             textAlign = TextAlign.Center
         )
@@ -130,6 +155,7 @@ private fun GridCell(
 @Composable
 private fun DebugWordList(
     placements: List<WordPlacement>,
+    found: Set<Int>,
     skipped: List<String>,
     modifier: Modifier = Modifier
 ) {
@@ -139,14 +165,23 @@ private fun DebugWordList(
             style = MaterialTheme.typography.titleSmall
         )
         Spacer(Modifier.height(6.dp))
-        placements.forEach { p ->
+        placements.forEachIndexed { index, p ->
             val first = p.cells.firstOrNull()
             val last = p.cells.lastOrNull()
+            val isFound = index in found
+            val base = MaterialTheme.typography.bodySmall
+            val style = if (isFound) {
+                base.copy(textDecoration = TextDecoration.LineThrough)
+            } else base
+
             Text(
-                text = "• ${p.original} → ${p.normalized}  " +
+                // ✓ for found; • for not yet found
+                text = "${if (isFound) "✓" else "•"} ${p.original} → ${p.normalized}  " +
                         "(len=${p.cells.size})  " +
                         "from (${first?.row},${first?.col}) to (${last?.row},${last?.col})",
-                style = MaterialTheme.typography.bodySmall
+                style = style,
+                color = if (isFound) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                else MaterialTheme.colorScheme.onSurface
             )
         }
 
