@@ -157,7 +157,7 @@ Minimal CI workflow in `.github/workflows/ci.yml`:
 
 ## Roadmap
 
-- Final screen, new geme button.
+- Final screen + New Game button.
 - Word list UX (chips / translation toggle).  
 - Persist progress (DataStore).
 - Difficulty toggles: size, diagonals, intersections.  
