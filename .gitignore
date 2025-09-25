@@ -43,6 +43,7 @@ local.properties
 # Misc
 captures/
 .externalNativeBuild/
+.DS_Store
 
 ####### Android Studio GhatGpt recs #######
 
