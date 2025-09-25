@@ -2,6 +2,8 @@
 
 A tiny Jetpack Compose word-search game. It builds a grid from a bilingual word pack, lets you find words by tapping **start → end** (straight line), and includes **Hint** and **Shuffle** actions. The code is deliberately small and test-friendly.
 
+![Android CI](https://github.com/SaschaKay/play-and-translate/actions/workflows/ci.yml/badge.svg)
+
 ---
 
 ## Quick start
@@ -58,8 +60,9 @@ A tiny Jetpack Compose word-search game. It builds a grid from a bilingual word 
 ## Packs (assets)
 
 Built-in packs are JSON files under:
+
 app/src/main/assets/packs/
-basics.json
+  basics.json
 
 
 **Pack schema** (see `data/WordPackModels.kt`):
