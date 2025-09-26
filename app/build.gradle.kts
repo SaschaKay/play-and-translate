@@ -1,79 +1,42 @@
-plugins {
-    alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.kotlin.serialization)
-}
+name: Android CI
 
-android {
-    namespace = "com.playandtranslate.wordsearch"
-    compileSdk = 36
+on:
+  push:
+    branches: [ main, dev ]
+  pull_request:
+    branches: [ main, dev ]
 
-    defaultConfig {
-        applicationId = "com.playandtranslate.wordsearch"
-        minSdk = 24
-        targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+jobs:
+  build:
+    runs-on: ubuntu-latest
 
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-    }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    buildTypes {
-        release {
-            isMinifyEnabled = true          // turn on R8 code shrinking/obfuscation
-            isShrinkResources = true        // remove unused resources (works only if minify is on)
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-        debug {
-            isMinifyEnabled = false         // keep debug easy to inspect
-        }
-    }
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
 
-    compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_11
-        targetCompatibility = JavaVersion.VERSION_11
-    }
-    kotlinOptions {
-        jvmTarget = "11"
-    }
-    buildFeatures {
-        compose = true
-    }
-}
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: |
+            platform-tools
+            platforms;android-36
+            build-tools;36.0.0
 
-dependencies {
-    implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.lifecycle.runtime.ktx)
-    implementation(libs.androidx.activity.compose)
-    implementation(platform(libs.androidx.compose.bom))
-    implementation(libs.androidx.compose.ui)
-    implementation(libs.androidx.compose.ui.graphics)
-    implementation(libs.androidx.compose.ui.tooling.preview)
-    implementation(libs.androidx.compose.material3)
+      - name: Gradle wrapper validation
+        uses: gradle/wrapper-validation-action@v2
 
-    // Lifecycle & coroutines
-    implementation(libs.androidx.lifecycle.viewmodel.ktx)
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.kotlinx.coroutines.core)
-    implementation(libs.kotlinx.coroutines.android)
+      - name: Gradle info
+        run: ./gradlew --version
 
-    // Serialization (if you moved it to the catalog)
-    implementation(libs.kotlinx.serialization.json)
+      - name: Run unit tests
+        run: ./gradlew test --stacktrace --no-daemon
 
-    // Tests
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.junit)
-    androidTestImplementation(libs.androidx.espresso.core)
-    androidTestImplementation(platform(libs.androidx.compose.bom))
-    androidTestImplementation(libs.androidx.compose.ui.test.junit4)
-    debugImplementation(libs.androidx.compose.ui.tooling)
-    debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-    testImplementation(libs.kotlinx.coroutines.test)
-    testImplementation(libs.androidx.arch.core.testing)
-}
+      - name: Android Lint (debug)
+        run: ./gradlew :app:lintDebug --stacktrace --no-daemon
