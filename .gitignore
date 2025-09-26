@@ -35,6 +35,7 @@ replay_pid*
 build/
 **/build/
 local.properties
+!gradle/wrapper/**
 
 # IDE
 .idea/
