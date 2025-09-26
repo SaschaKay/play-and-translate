@@ -55,8 +55,24 @@ jobs:
       - name: Gradle info
         run: ./gradlew --version
 
-      - name: Run unit tests
-        run: ./gradlew test --stacktrace --no-daemon
+      - name: Run unit tests (app debug)
+        run: ./gradlew :app:testDebugUnitTest --stacktrace --no-daemon
+
+      - name: Print failed tests (quick log)
+        if: failure()
+        run: |
+          echo "---- FAILED TESTS XML SNIPPETS ----"
+          grep -R "<failure" -n app/build/test-results/testDebugUnitTest/ || true
+          echo "---- END ----"
+
+      - name: Upload unit test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-report
+          path: |
+            app/build/reports/tests/testDebugUnitTest/**
+            app/build/test-results/testDebugUnitTest/**
 
       - name: Android Lint (debug)
         run: ./gradlew :app:lintDebug --stacktrace --no-daemon
