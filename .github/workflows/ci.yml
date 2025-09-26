@@ -21,13 +21,33 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Set up Android SDK
+      # Install cmdline-tools and set ANDROID_SDK_ROOT
+      - name: Set up Android SDK (cmdline-tools)
         uses: android-actions/setup-android@v3
+
+      # Cash SDK and ~/.android 
+      - name: Cache Android SDK
+        uses: actions/cache@v4
         with:
-          packages: |
-            platform-tools
-            platforms;android-35
-            build-tools;35.0.0
+          path: |
+            ${{ env.ANDROID_SDK_ROOT }}
+            ~/.android
+          key: sdk-${{ runner.os }}-${{ hashFiles('**/build.gradle*', '**/gradle.properties', 'gradle/libs.versions.toml') }}
+
+      # Install packages (36 → fallback 35)
+      - name: Install SDK packages (retry)
+        uses: nick-fields/retry@v3
+        with:
+          max_attempts: 3
+          timeout_minutes: 20
+          command: |
+            set -eux
+            yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --channel=0 "platform-tools"
+            yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --channel=0 "platforms;android-36"
+            # Пытаемся 36.0.0, если нет — ставим 35.0.1 (AGP возьмёт актуальный)
+            yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --channel=0 "build-tools;36.0.0" || \
+            yes | sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --channel=0 "build-tools;35.0.1"
+            sdkmanager --sdk_root="${ANDROID_SDK_ROOT}" --list | head -n 80
 
       - name: Gradle wrapper validation
         uses: gradle/wrapper-validation-action@v2
